@@ -1,0 +1,48 @@
+{
+  "author": "Priyank Parashar",
+  "bin": {
+    "package-cjson": "./index.js"
+  },
+  "bugs": {
+    "url": "https://github.com/webextensions/package-cjson/issues"
+  },
+  "dependencies": {
+    "chalk": "1.1.3",
+    "cjson": "0.5.0",
+    "deep-equal": "1.0.1",
+    "difflet": "1.0.1",
+    "json-stable-stringify": "1.0.1",
+    "jsonfile": "3.0.0"
+  },
+  "description": "Add comments in package.cjson in Node JS project; Generate package.json from it; Compare with package.json",
+  "devDependencies": {
+    "eslint": "3.19.0",
+    "mocha": "3.4.2"
+  },
+  "homepage": "https://github.com/webextensions/package-cjson#readme",
+  "keywords": [
+    "comments",
+    "package.cjson",
+    "generate",
+    "package.json",
+    "compare"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "name": "package-cjson",
+  "preferGlobal": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webextensions/package-cjson.git"
+  },
+  "scripts": {
+    "compare": "node index.js compare",
+    "compare-silent": "node index.js compare-silent",
+    "generate-package.json": "node index.js generate-package.json",
+    "lint": "./node_modules/.bin/eslint .",
+    "mocha": "./node_modules/.bin/mocha",
+    "start": "node index.js",
+    "test": "npm run lint && npm run mocha"
+  },
+  "version": "0.0.0"
+}
