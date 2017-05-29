@@ -44,5 +44,5 @@
     "compare-silent": "node index.js compare-silent",
     "generate-package.json": "node index.js generate-package.json"
   },
-  "version": "0.0.0"
+  "version": "0.0.1"
 }
