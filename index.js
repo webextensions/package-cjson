@@ -49,8 +49,9 @@ if (!module.parent) {   // This package is supposed to be used as a global packa
             showHelp: true
         });
     }
-} else {    // Show a warning and exit with code 0 if this project is included with Node JS "require"
-            // (useful for basic test-case that this package would execute)
+} else {
+    // Show a warning and exit with code 0 if this project is included with Node JS "require"
+    // (useful for basic test-case that this package would execute)
     exitWithError({
         summary: chalk.blue('Please run this module (copy-files-from-to) from its binary file.') + chalk.yellow(' Warning: Exiting without error (code 0).'),
         exitCode: 0
