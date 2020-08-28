@@ -1,6 +1,6 @@
 /* globals describe, it */
 
-var packageJson = require('../index.js');       // eslint-disable-line no-unused-vars
+const packageJson = require('../index.js');       // eslint-disable-line no-unused-vars
 
 describe('package', function() {
     describe('package-json', function() {

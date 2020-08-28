@@ -1,20 +1,21 @@
 #!/usr/bin/env node
 /*eslint-env node*/
 
-var path = require('path');
+const path = require('path');
 
-var chalk = require('chalk'),
+const
+    chalk = require('chalk'),
     cjson = require('cjson'),
     stringify = require('json-stable-stringify'),
     jsonfile = require('jsonfile'),
     deepEqual = require('deep-equal'),
     difflet = require('difflet');
 
-var { argv } = require('yargs');
+const { argv } = require('yargs');
 
-var pwd = process.env.PWD;
+const pwd = process.env.PWD;
 
-var help = function () {
+const help = function () {
     console.log([
         'Format:   package-cjson [--silent-on-compare-success] --mode  <compare/compare-package-version/generate-package-json/generate-package-version-json>',
         'Examples: package-cjson --mode compare',
@@ -26,8 +27,9 @@ var help = function () {
     ].join('\n'));
 };
 
-var exitWithError = function (options) {
-    var summary = options.summary,
+const exitWithError = function (options) {
+    const
+        summary = options.summary,
         error = options.error,
         showHelp = options.showHelp,
         exitCode = typeof options.exitCode === 'number' ? options.exitCode : 1;
@@ -44,7 +46,7 @@ var exitWithError = function (options) {
     process.exit(exitCode);
 };
 
-var mode = argv['mode'];
+const mode = argv['mode'];
 if (!module.parent) {   // This package is supposed to be used as a global package
     if (
         [

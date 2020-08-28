@@ -20,6 +20,10 @@
         "no-console": "off",
         "no-debugger": "off",
         "no-shadow": "off",
+
+        "no-var": [ "error" ],
+        "prefer-const": [ "error" ],
+
         "quotes": "off",                            // http://eslint.org/docs/rules/quotes
         "semi": [ "error", "always" ]
     }
