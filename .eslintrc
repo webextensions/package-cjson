@@ -8,7 +8,14 @@
     },
     "extends": "eslint:recommended",
     "rules": {
-        "indent": [ "error", 4 ],
+        "indent": [
+            "error",
+            4,
+            {
+                "SwitchCase": 1, // https://eslint.org/docs/rules/indent#switchcase
+                "ignoreComments": true // https://eslint.org/docs/rules/indent#ignorecomments
+            }
+        ],
         "linebreak-style": [ "error", "unix" ],
         "no-console": "off",
         "no-debugger": "off",

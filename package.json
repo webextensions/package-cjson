@@ -12,7 +12,8 @@
     "deep-equal": "^2.0.1",
     "difflet": "^1.0.1",
     "json-stable-stringify": "^1.0.1",
-    "jsonfile": "^6.0.1"
+    "jsonfile": "^6.0.1",
+    "yargs": "^15.4.1"
   },
   "description": "Add comments in package.cjson in Node JS project; Generate package.json from it; Compare with package.json",
   "devDependencies": {

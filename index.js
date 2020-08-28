@@ -10,14 +10,18 @@ var chalk = require('chalk'),
     deepEqual = require('deep-equal'),
     difflet = require('difflet');
 
+var { argv } = require('yargs');
+
 var pwd = process.env.PWD;
 
 var help = function () {
     console.log([
-        'Format:   package-cjson <compare/compare-silent/generate-package.json>',
-        'Examples: package-cjson compare',
-        '          package-cjson compare-silent',
-        '          package-cjson generate-package.json',
+        'Format:   package-cjson [--silent-on-compare-success] --mode  <compare/compare-package-version/generate-package-json/generate-package-version-json>',
+        'Examples: package-cjson --mode compare',
+        '          package-cjson --mode compare --silent-on-compare-success',
+        '          package-cjson --mode compare-package-version',
+        '          package-cjson --mode generate-package-json',
+        '          package-cjson --mode generate-package-version-json',
         ''
     ].join('\n'));
 };
@@ -40,47 +44,89 @@ var exitWithError = function (options) {
     process.exit(exitCode);
 };
 
-var mode = null;
+var mode = argv['mode'];
 if (!module.parent) {   // This package is supposed to be used as a global package
-    mode = process.argv[2];
-    if (!mode) {
+    if (
+        [
+            'compare',
+            'compare-package-version',
+            'generate-package-json',
+            'generate-package-version-json'
+        ].includes(mode)
+    ) {
+        // do nothing
+    } else {
         exitWithError({
             summary: '\nError: Not enough arguments. Exiting with code 1.\n',
-            showHelp: true
+            showHelp: true,
+            exitCode: 1
         });
     }
 } else {
     // Show a warning and exit with code 0 if this project is included with Node JS "require"
     // (useful for basic test-case that this package would execute)
     exitWithError({
-        summary: chalk.blue('Please run this module (copy-files-from-to) from its binary file.') + chalk.yellow(' Warning: Exiting without error (code 0).'),
+        summary: chalk.blue('Please run this module (package-cjson) from its binary file.') + chalk.yellow(' Warning: Exiting without error (code 0).'),
         exitCode: 0
     });
 }
 
-var packageJson,
-    packageCjson;
+switch (mode) {
+    case 'compare': {
+        const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
+        const packageJson = jsonfile.readFileSync(path.join(pwd, './package.json'));
 
-if (mode === 'compare' || mode === 'compare-silent') {
-    packageJson = jsonfile.readFileSync(path.join(pwd, './package.json'));
-    packageCjson = cjson.load(path.join(pwd, './package.cjson'));
-    if (deepEqual(packageJson, packageCjson)) {
-        if (mode === 'compare') {
-            console.log(chalk.green(' ✔ ' + chalk.bold('package.json') + ' is equivalent to ' + chalk.bold('package.cjson')));
+        if (deepEqual(packageJson, packageCjson)) {
+            if (argv['silent-on-compare-success']) {
+                // do nothing
+            } else {
+                console.log(chalk.green(' ✔ ' + chalk.bold('package.json') + ' is equivalent to ' + chalk.bold('package.cjson')));
+            }
+        } else {
+            console.log(chalk.red(' ✘ ' + chalk.bold('package.json') + ' is not equivalent to ' + chalk.bold('package.cjson')));
+            console.log(chalk.underline.bold('\nDiff:'));
+            console.log('    ' + difflet({ indent: 2 }).compare(packageCjson, packageJson).replace(/\n/g, '\n    '));
+            process.exit(1);
         }
-    } else {
-        console.log(chalk.red(' ✘ ' + chalk.bold('package.json') + ' is not equivalent to ' + chalk.bold('package.cjson')));
-        console.log(chalk.underline.bold('\nDiff:'));
-        console.log('    ' + difflet({ indent: 2 }).compare(packageCjson, packageJson).replace(/\n/g, '\n    '));
-        process.exit(1);
+        break;
     }
-} else if (mode === 'generate-package.json') {
-    packageCjson = cjson.load(path.join(pwd, './package.cjson')),
-    packageJson = JSON.parse(stringify(packageCjson));
-    jsonfile.writeFileSync(path.join(pwd, './package.json'), packageJson, {spaces: 2});
-} else {
-    exitWithError({
-        summary: '\nError: Incorrect argument. Exiting with code 1.\n',
-        showHelp: true
-    });
+    case 'compare-package-version': {
+        const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
+        const packageVersionJson = jsonfile.readFileSync(path.join(pwd, './package-version.json'));
+
+        if (deepEqual(packageCjson.version, packageVersionJson.version)) {
+            if (argv['silent-on-compare-success']) {
+                // do nothing
+            } else {
+                console.log(chalk.green(' ✔ ' + chalk.bold('package-version.json') + ' is equivalent to ' + chalk.bold('package.cjson')));
+            }
+        } else {
+            console.log(chalk.red(' ✘ ' + chalk.bold('package-version.json') + ' is not equivalent to ' + chalk.bold('package.cjson')));
+            console.log(chalk.underline.bold('\nDiff:'));
+            console.log('    ' + difflet({ indent: 2 }).compare(packageCjson.version, packageVersionJson.version).replace(/\n/g, '\n    '));
+            process.exit(1);
+        }
+        break;
+    }
+    case 'generate-package-json': {
+        const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
+        const packageJson = JSON.parse(stringify(packageCjson));
+        jsonfile.writeFileSync(path.join(pwd, './package.json'), packageJson, {spaces: 2});
+        break;
+    }
+    case 'generate-package-version-json': {
+        const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
+        const packageVersionJson = {
+            version: packageCjson.version
+        };
+        jsonfile.writeFileSync(path.join(pwd, './package-version.json'), packageVersionJson, {spaces: 2});
+        break;
+    }
+    default: {
+        exitWithError({
+            summary: '\nError: Incorrect argument. Exiting with code 1.\n',
+            showHelp: true
+        });
+        break;
+    }
 }
