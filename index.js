@@ -4,6 +4,7 @@
 const path = require('path');
 
 const
+    helpmate = require('helpmate'),
     chalk = require('chalk'),
     cjson = require('cjson'),
     stringify = require('json-stable-stringify'),
@@ -113,7 +114,19 @@ switch (mode) {
     case 'generate-package-json': {
         const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
         const packageJson = JSON.parse(stringify(packageCjson));
-        jsonfile.writeFileSync(path.join(pwd, './package.json'), packageJson, {spaces: 2});
+
+        const packageJsonFilePath = path.join(pwd, './package.json');
+        helpmate.fs.updateFileIfRequired({
+            file: packageJsonFilePath,
+            data: JSON.stringify(packageJson, null, '  '),
+            callback: function (err) {
+                if (err) {
+                    exitWithError({
+                        summary: `\nError: Failed to update ${packageJsonFilePath}. Exiting with code 1.\n`
+                    });
+                }
+            }
+        });
         break;
     }
     case 'generate-package-version-json': {
@@ -121,7 +134,18 @@ switch (mode) {
         const packageVersionJson = {
             version: packageCjson.version
         };
-        jsonfile.writeFileSync(path.join(pwd, './package-version.json'), packageVersionJson, {spaces: 2});
+        const packageVersionJsonFilePath = path.join(pwd, './package-version.json');
+        helpmate.fs.updateFileIfRequired({
+            file: packageVersionJsonFilePath,
+            data: JSON.stringify(packageVersionJson, null, '  '),
+            callback: function (err) {
+                if (err) {
+                    exitWithError({
+                        summary: `\nError: Failed to update ${packageVersionJsonFilePath}. Exiting with code 1.\n`
+                    });
+                }
+            }
+        });
         break;
     }
     default: {
