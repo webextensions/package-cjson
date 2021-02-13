@@ -118,7 +118,7 @@ switch (mode) {
         const packageJsonFilePath = path.join(pwd, './package.json');
         helpmate.fs.updateFileIfRequired({
             file: packageJsonFilePath,
-            data: JSON.stringify(packageJson, null, '  '),
+            data: JSON.stringify(packageJson, null, '  ') + '\n',
             callback: function (err) {
                 if (err) {
                     exitWithError({
@@ -137,7 +137,7 @@ switch (mode) {
         const packageVersionJsonFilePath = path.join(pwd, './package-version.json');
         helpmate.fs.updateFileIfRequired({
             file: packageVersionJsonFilePath,
-            data: JSON.stringify(packageVersionJson, null, '  '),
+            data: JSON.stringify(packageVersionJson, null, '  ') + '\n',
             callback: function (err) {
                 if (err) {
                     exitWithError({
