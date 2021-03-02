@@ -4,7 +4,6 @@
 const path = require('path');
 
 const
-    helpmate = require('helpmate'),
     chalk = require('chalk'),
     cjson = require('cjson'),
     stringify = require('json-stable-stringify'),
@@ -12,18 +11,33 @@ const
     deepEqual = require('deep-equal'),
     difflet = require('difflet');
 
+const helpmate = require('helpmate');
+
+const logger = require('note-down');
+logger.removeOption('showLogLine');
+
+
 const { argv } = require('yargs');
+
+const { updatePackageCjson } = require('./update-package-cjson/update-package-cjson.js');
 
 const pwd = process.env.PWD;
 
 const help = function () {
-    console.log([
-        'Format:   package-cjson [--silent-on-compare-success] --mode  <compare/compare-package-version/generate-package-json/generate-package-version-json>',
-        'Examples: package-cjson --mode compare',
-        '          package-cjson --mode compare --silent-on-compare-success',
-        '          package-cjson --mode compare-package-version',
+    logger.verbose([
+        'Format:   package-cjson --mode <selected-mode> [--silent-on-compare-success]',
+        '',
+        'Modes:    compare',
+        '          compare-package-version',
+        '          generate-package-json',
+        '          generate-package-version-json',
+        '          update',
+        '          update-and-generate-package-json',
+        '',
+        'Examples: package-cjson --mode compare --silent-on-compare-success',
         '          package-cjson --mode generate-package-json',
-        '          package-cjson --mode generate-package-version-json',
+        '          package-cjson --mode update',
+        '          package-cjson --mode update-and-generate-package-json',
         ''
     ].join('\n'));
 };
@@ -54,7 +68,9 @@ if (!module.parent) {   // This package is supposed to be used as a global packa
             'compare',
             'compare-package-version',
             'generate-package-json',
-            'generate-package-version-json'
+            'generate-package-version-json',
+            'update',
+            'update-and-generate-package-json'
         ].includes(mode)
     ) {
         // do nothing
@@ -73,6 +89,30 @@ if (!module.parent) {   // This package is supposed to be used as a global packa
         exitCode: 0
     });
 }
+
+const doGeneratePackageJson = function (pwd) {
+    const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
+    const packageJson = JSON.parse(stringify(packageCjson));
+
+    const packageJsonFilePath = path.join(pwd, './package.json');
+    helpmate.fs.updateFileIfRequired({
+        file: packageJsonFilePath,
+        data: JSON.stringify(packageJson, null, '  ') + '\n',
+        callback: function (err) {
+            if (err) {
+                exitWithError({
+                    summary: `\n ✘ Error: Failed to update ${packageJsonFilePath}. Exiting with code 1.\n`
+                });
+            } else {
+                logger.success(` ✔ Generated ${packageJsonFilePath} successfully.`);
+            }
+        }
+    });
+};
+
+const doUpdatePackageCjson = function (pwd) {
+    updatePackageCjson(path.join(pwd, './package.cjson'));
+};
 
 switch (mode) {
     case 'compare': {
@@ -112,21 +152,7 @@ switch (mode) {
         break;
     }
     case 'generate-package-json': {
-        const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
-        const packageJson = JSON.parse(stringify(packageCjson));
-
-        const packageJsonFilePath = path.join(pwd, './package.json');
-        helpmate.fs.updateFileIfRequired({
-            file: packageJsonFilePath,
-            data: JSON.stringify(packageJson, null, '  ') + '\n',
-            callback: function (err) {
-                if (err) {
-                    exitWithError({
-                        summary: `\nError: Failed to update ${packageJsonFilePath}. Exiting with code 1.\n`
-                    });
-                }
-            }
-        });
+        doGeneratePackageJson(pwd);
         break;
     }
     case 'generate-package-version-json': {
@@ -148,6 +174,14 @@ switch (mode) {
         });
         break;
     }
+    case 'update': {
+        doUpdatePackageCjson(pwd);
+        break;
+    }
+    case 'update-and-generate-package-json':
+        doUpdatePackageCjson(pwd);
+        doGeneratePackageJson(pwd);
+        break;
     default: {
         exitWithError({
             summary: '\nError: Incorrect argument. Exiting with code 1.\n',

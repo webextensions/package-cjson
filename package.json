@@ -14,11 +14,12 @@
     "helpmate": "^0.1.0",
     "json-stable-stringify": "^1.0.1",
     "jsonfile": "^6.1.0",
+    "note-down": "^0.2.3",
     "yargs": "^16.2.0"
   },
   "description": "Add comments in package.cjson in Node JS project; Generate package.json from it; Compare with package.json",
   "devDependencies": {
-    "eslint": "^7.20.0",
+    "eslint": "^7.21.0",
     "mocha": "^8.3.0"
   },
   "homepage": "https://github.com/webextensions/package-cjson#readme",
