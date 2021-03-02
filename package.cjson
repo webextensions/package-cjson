@@ -18,7 +18,7 @@
   },
   "description": "Add comments in package.cjson in Node JS project; Generate package.json from it; Compare with package.json",
   "devDependencies": {
-    "eslint": "^7.20.0",
+    "eslint": "^7.21.0",
     "mocha": "^8.3.0"
   },
   "homepage": "https://github.com/webextensions/package-cjson#readme",
