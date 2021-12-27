@@ -7,7 +7,7 @@
     "url": "https://github.com/webextensions/package-cjson/issues"
   },
   "dependencies": {
-    "chalk": "^4.1.0",                 // Colorful console
+    "chalk": "^4.1.2",                 // Colorful console
     "cjson": "^0.5.0",                 // Parse CJSON
     "deep-equal": "^2.0.5",            // Compare JSON objects
     "difflet": "^1.0.1",               // Colorful diff
@@ -15,12 +15,12 @@
     "json-stable-stringify": "^1.0.1", // Predictable JSON stringify
     "jsonfile": "^6.1.0",              // Operate on json files
     "note-down": "^0.2.3",             // Logging
-    "yargs": "^16.2.0"                 // Processing of command-line arguments
+    "yargs": "^17.3.1"                 // Processing of command-line arguments
   },
   "description": "Add comments in package.cjson in Node JS project; Generate package.json from it; Compare with package.json",
   "devDependencies": {
-    "eslint": "^7.21.0",
-    "mocha": "^8.3.0"
+    "eslint": "^8.5.0",
+    "mocha": "^9.1.3"
   },
   "homepage": "https://github.com/webextensions/package-cjson#readme",
   "keywords": [
