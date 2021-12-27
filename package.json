@@ -10,6 +10,7 @@
         "chalk": "^4.1.2",
         "cjson": "^0.5.0",
         "deep-equal": "^2.0.5",
+        "detect-indent": "^6.1.0",
         "difflet": "^1.0.1",
         "helpmate": "^0.1.0",
         "json-stable-stringify": "^1.0.1",

@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 /*eslint-env node*/
 
-const path = require('path');
+const
+    fs = require('node:fs'),
+    path = require('node:path');
 
 const
     chalk = require('chalk'),
     cjson = require('cjson'),
     stringify = require('json-stable-stringify'),
+    detectIndent = require('detect-indent'),
     jsonfile = require('jsonfile'),
     deepEqual = require('deep-equal'),
     difflet = require('difflet');
@@ -91,13 +94,17 @@ if (!module.parent) {   // This package is supposed to be used as a global packa
 }
 
 const doGeneratePackageJson = function (pwd) {
-    const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
+    const packageCjsonFilePath = path.join(pwd, './package.cjson');
+    const packageCjson = cjson.load(packageCjsonFilePath);
     const packageJson = JSON.parse(stringify(packageCjson));
 
     const packageJsonFilePath = path.join(pwd, './package.json');
+    const packageCjsonRawContents = fs.readFileSync(packageCjsonFilePath, 'utf8');
+    const indentation = detectIndent(packageCjsonRawContents).indent || '  ';
+    const endsWithNewLine = (packageCjsonRawContents.substr(-1) === '\n') ? true : false;
     helpmate.fs.updateFileIfRequired({
         file: packageJsonFilePath,
-        data: JSON.stringify(packageJson, null, '  ') + '\n',
+        data: JSON.stringify(packageJson, null, indentation) + (endsWithNewLine ? '\n' : ''),
         callback: function (err) {
             if (err) {
                 exitWithError({
@@ -156,14 +163,18 @@ switch (mode) {
         break;
     }
     case 'generate-package-version-json': {
-        const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
+        const packageCjsonFilePath = path.join(pwd, './package.cjson');
+        const packageCjson = cjson.load(packageCjsonFilePath);
         const packageVersionJson = {
             version: packageCjson.version
         };
         const packageVersionJsonFilePath = path.join(pwd, './package-version.json');
+        const packageCjsonRawContents = fs.readFileSync(packageCjsonFilePath, 'utf8');
+        const indentation = detectIndent(packageCjsonRawContents).indent || '  ';
+        const endsWithNewLine = (packageCjsonRawContents.substr(-1) === '\n') ? true : false;
         helpmate.fs.updateFileIfRequired({
             file: packageVersionJsonFilePath,
-            data: JSON.stringify(packageVersionJson, null, '  ') + '\n',
+            data: JSON.stringify(packageVersionJson, null, indentation) + (endsWithNewLine ? '\n' : ''),
             callback: function (err) {
                 if (err) {
                     exitWithError({
