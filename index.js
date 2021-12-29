@@ -94,11 +94,11 @@ if (!module.parent) {   // This package is supposed to be used as a global packa
 }
 
 const doGeneratePackageJson = function (pwd) {
-    const packageCjsonFilePath = path.join(pwd, './package.cjson');
+    const packageCjsonFilePath = path.resolve(pwd, './package.cjson');
     const packageCjson = cjson.load(packageCjsonFilePath);
     const packageJson = JSON.parse(stringify(packageCjson));
 
-    const packageJsonFilePath = path.join(pwd, './package.json');
+    const packageJsonFilePath = path.resolve(pwd, './package.json');
     const packageCjsonRawContents = fs.readFileSync(packageCjsonFilePath, 'utf8');
     const indentation = detectIndent(packageCjsonRawContents).indent || '  ';
     const endsWithNewLine = (packageCjsonRawContents.substr(-1) === '\n') ? true : false;
@@ -118,22 +118,24 @@ const doGeneratePackageJson = function (pwd) {
 };
 
 const doUpdatePackageCjson = function (pwd) {
-    updatePackageCjson(path.join(pwd, './package.cjson'));
+    updatePackageCjson(path.resolve(pwd, './package.cjson'));
 };
 
 switch (mode) {
     case 'compare': {
-        const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
-        const packageJson = jsonfile.readFileSync(path.join(pwd, './package.json'));
+        const packageCjsonFilePath = path.resolve(pwd, './package.cjson');
+        const packageCjson = cjson.load(packageCjsonFilePath);
+        const packageJsonFilePath = path.resolve(pwd, './package.json');
+        const packageJson = jsonfile.readFileSync(packageJsonFilePath);
 
         if (deepEqual(packageJson, packageCjson)) {
             if (argv['silent-on-compare-success']) {
                 // do nothing
             } else {
-                console.log(chalk.green(' ✔ ' + chalk.bold('package.json') + ' is equivalent to ' + chalk.bold('package.cjson')));
+                console.log(chalk.green(` ✔ ${chalk.bold('package.json')} is equivalent to ${chalk.bold('package.cjson')}`) + ` (${pwd})`);
             }
         } else {
-            console.log(chalk.red(' ✘ ' + chalk.bold('package.json') + ' is not equivalent to ' + chalk.bold('package.cjson')));
+            console.log(chalk.red(` ✘ ${chalk.bold('package.json')} is not equivalent to ${chalk.bold('package.cjson')}`) + ` (${pwd})`);
             console.log(chalk.underline.bold('\nDiff:'));
             console.log('    ' + difflet({ indent: 2 }).compare(packageCjson, packageJson).replace(/\n/g, '\n    '));
             process.exit(1);
@@ -141,17 +143,19 @@ switch (mode) {
         break;
     }
     case 'compare-package-version': {
-        const packageCjson = cjson.load(path.join(pwd, './package.cjson'));
-        const packageVersionJson = jsonfile.readFileSync(path.join(pwd, './package-version.json'));
+        const packageCjsonFilePath = path.resolve(pwd, './package.cjson');
+        const packageCjson = cjson.load(packageCjsonFilePath);
+        const packageVersionFilePath = path.resolve(pwd, './package-version.json');
+        const packageVersionJson = jsonfile.readFileSync(packageVersionFilePath);
 
         if (deepEqual(packageCjson.version, packageVersionJson.version)) {
             if (argv['silent-on-compare-success']) {
                 // do nothing
             } else {
-                console.log(chalk.green(' ✔ ' + chalk.bold('package-version.json') + ' is equivalent to ' + chalk.bold('package.cjson')));
+                console.log(chalk.green(` ✔ ${chalk.bold('package-version.json')} is equivalent to ${chalk.bold('package.cjson')}`) + ` (${pwd})`);
             }
         } else {
-            console.log(chalk.red(' ✘ ' + chalk.bold('package-version.json') + ' is not equivalent to ' + chalk.bold('package.cjson')));
+            console.log(chalk.red(` ✘ ${chalk.bold('package-version.json')} is not equivalent to ${chalk.bold('pacakge.cjson')}`) + ` (${pwd})`);
             console.log(chalk.underline.bold('\nDiff:'));
             console.log('    ' + difflet({ indent: 2 }).compare(packageCjson.version, packageVersionJson.version).replace(/\n/g, '\n    '));
             process.exit(1);
@@ -163,12 +167,12 @@ switch (mode) {
         break;
     }
     case 'generate-package-version-json': {
-        const packageCjsonFilePath = path.join(pwd, './package.cjson');
+        const packageCjsonFilePath = path.resolve(pwd, './package.cjson');
         const packageCjson = cjson.load(packageCjsonFilePath);
         const packageVersionJson = {
             version: packageCjson.version
         };
-        const packageVersionJsonFilePath = path.join(pwd, './package-version.json');
+        const packageVersionJsonFilePath = path.resolve(pwd, './package-version.json');
         const packageCjsonRawContents = fs.readFileSync(packageCjsonFilePath, 'utf8');
         const indentation = detectIndent(packageCjsonRawContents).indent || '  ';
         const endsWithNewLine = (packageCjsonRawContents.substr(-1) === '\n') ? true : false;
