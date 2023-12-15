@@ -14,9 +14,9 @@ const
     deepEqual = require('deep-equal'),
     difflet = require('difflet');
 
-const helpmate = require('helpmate');
+const { updateFileIfRequired } = require('helpmate/dist/fs/updateFileIfRequired.cjs');
 
-const logger = require('note-down');
+const { logger } = require('note-down');
 logger.removeOption('showLogLine');
 
 
@@ -88,7 +88,7 @@ if (!module.parent) {   // This package is supposed to be used as a global packa
     // Show a warning and exit with code 0 if this project is included with Node JS "require"
     // (useful for basic test-case that this package would execute)
     exitWithError({
-        summary: chalk.blue('Please run this module (package-cjson) from its binary file.') + chalk.yellow(' Warning: Exiting without error (code 0).'),
+        summary: chalk.blue('Please run this module (package-cjson) from its executable file.') + chalk.yellow(' Warning: Exiting without error (code 0).'),
         exitCode: 0
     });
 }
@@ -102,7 +102,7 @@ const doGeneratePackageJson = function (pwd) {
     const packageCjsonRawContents = fs.readFileSync(packageCjsonFilePath, 'utf8');
     const indentation = detectIndent(packageCjsonRawContents).indent || '  ';
     const endsWithNewLine = (packageCjsonRawContents.substr(-1) === '\n') ? true : false;
-    helpmate.fs.updateFileIfRequired({
+    updateFileIfRequired({
         file: packageJsonFilePath,
         data: JSON.stringify(packageJson, null, indentation) + (endsWithNewLine ? '\n' : ''),
         callback: function (err) {
@@ -176,7 +176,7 @@ switch (mode) {
         const packageCjsonRawContents = fs.readFileSync(packageCjsonFilePath, 'utf8');
         const indentation = detectIndent(packageCjsonRawContents).indent || '  ';
         const endsWithNewLine = (packageCjsonRawContents.substr(-1) === '\n') ? true : false;
-        helpmate.fs.updateFileIfRequired({
+        updateFileIfRequired({
             file: packageVersionJsonFilePath,
             data: JSON.stringify(packageVersionJson, null, indentation) + (endsWithNewLine ? '\n' : ''),
             callback: function (err) {

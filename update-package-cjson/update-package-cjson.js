@@ -5,8 +5,7 @@ const
     fs = require('fs'),
     { execSync } = require('child_process');
 
-const
-    logger = require('note-down');
+const { logger } = require('note-down');
 
 const updatePackageCjson = function (packageCjson) {
     const folderPath = path.dirname(packageCjson);
