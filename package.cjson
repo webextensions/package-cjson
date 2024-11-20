@@ -56,5 +56,5 @@
         "update": "node index.js --mode update",
         "update-and-generate-package-json": "node index.js --mode update-and-generate-package-json"
     },
-    "version": "1.4.0"
+    "version": "1.5.0"
 }
