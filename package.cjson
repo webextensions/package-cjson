@@ -15,16 +15,16 @@
         "deep-equal": "^2.2.3",            // Compare JSON objects
         "detect-indent": "=6.1.0",
         "difflet": "^1.0.1",               // Colorful diff
-        "helpmate": "^1.6.0",             // Some utility functions
+        "helpmate": "^1.7.1",              // Some utility functions
         "json-stable-stringify": "^1.1.1", // Predictable JSON stringify
         "jsonfile": "^6.1.0",              // Operate on json files
-        "note-down": "^1.0.2",             // Logging
+        "note-down": "=1.0.2",             // Logging
         "yargs": "^17.7.2"                 // Processing of command-line arguments
     },
     "description": "Add comments in package.cjson in Node JS project; Generate package.json from it; Compare with package.json",
     "devDependencies": {
         "eslint": "=8.57.0",
-        "mocha": "^10.4.0"
+        "mocha": "^10.8.2"
     },
     "homepage": "https://github.com/webextensions/package-cjson#readme",
     "keywords": [

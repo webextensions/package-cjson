@@ -12,16 +12,16 @@
         "deep-equal": "^2.2.3",
         "detect-indent": "=6.1.0",
         "difflet": "^1.0.1",
-        "helpmate": "^1.6.0",
+        "helpmate": "^1.7.1",
         "json-stable-stringify": "^1.1.1",
         "jsonfile": "^6.1.0",
-        "note-down": "^1.0.2",
+        "note-down": "=1.0.2",
         "yargs": "^17.7.2"
     },
     "description": "Add comments in package.cjson in Node JS project; Generate package.json from it; Compare with package.json",
     "devDependencies": {
         "eslint": "=8.57.0",
-        "mocha": "^10.4.0"
+        "mocha": "^10.8.2"
     },
     "engines": {
         "node": ">=18"

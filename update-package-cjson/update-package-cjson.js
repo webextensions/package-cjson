@@ -59,16 +59,29 @@ const updatePackageCjson = function (packageCjson) {
 
     for (const nameOfPackageToUpdate of packagesToUpdate) {
         let latestSemverValue = commandOutput[nameOfPackageToUpdate];
+
         // LAZY: Handling only the common syntaxes. There can be other syntaxes which aren't handled.
+        let charIndicatingVersionRange = commandOutput[nameOfPackageToUpdate].charAt(0);
+        if (
+            charIndicatingVersionRange === '^' ||
+            charIndicatingVersionRange === '~' ||
+            charIndicatingVersionRange === '='
+            // NOTE: Currently, we are filtering out the packages specified with "=" beforehand. So, while this case would never be reached, it's still kept for future reference.
+        ) {
+            // do nothing
+        } else {
+            charIndicatingVersionRange = '';
+        }
         latestSemverValue = commandOutput[nameOfPackageToUpdate]
             .replace('^', '')
             .replace('~', '')
             .replace('=', '');
+
         updatedPackageCjsonContents = updatedPackageCjsonContents.replace(
-            // LAZY: Handling only the common syntaxes. There can be other syntaxes which aren't handled.
-            new RegExp(`"${nameOfPackageToUpdate}"[\\s]*:[\\s]*"[0-9.^~=]+"`),
-            // LAZY: Replacing with "^" sign assuming that is the only case we need to cover for now
-            `"${nameOfPackageToUpdate}": "^${latestSemverValue}"`
+            // // LAZY: Handling only the common syntaxes. There can be other syntaxes which aren't handled.
+            new RegExp(`"${nameOfPackageToUpdate}"[\\s]*:[\\s]*"[0-9.^~=]+(-[a-zA-Z0-9.]+)?"`),
+            // LAZY: Replacing logic is a bit plain and there might be more cases to cover if we wish to go for a thorough solution
+            `"${nameOfPackageToUpdate}": "${charIndicatingVersionRange}${latestSemverValue}"`
         );
     }
 
