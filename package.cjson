@@ -1,7 +1,7 @@
 {
     "author": "Priyank Parashar",
     "engines": {
-        "node": ">=18"
+        "node": ">=22.12.0"
     },
     "bin": {
         "package-cjson": "./index.js"
@@ -15,9 +15,9 @@
         "deep-equal": "^2.2.3",            // Compare JSON objects
         "detect-indent": "=6.1.0",
         "difflet": "^1.0.1",               // Colorful diff
-        "helpmate": "^1.7.1",              // Some utility functions
-        "json-stable-stringify": "^1.1.1", // Predictable JSON stringify
-        "jsonfile": "^6.1.0",              // Operate on json files
+        "helpmate": "=1.7.1",              // Some utility functions
+        "json-stable-stringify": "^1.3.0", // Predictable JSON stringify
+        "jsonfile": "^6.2.0",              // Operate on json files
         "note-down": "=1.0.2",             // Logging
         "yargs": "^17.7.2"                 // Processing of command-line arguments
     },
