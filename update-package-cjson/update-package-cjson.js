@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-const
-    path = require('path'),
-    fs = require('fs'),
-    { execSync } = require('child_process');
+import path from 'node:path';
+import fs from 'node:fs';
+import { execSync } from 'node:child_process';
 
-const { logger } = require('note-down');
+import noteDown from 'note-down';
+const { logger } = noteDown;
 
 const updatePackageCjson = function (packageCjson) {
     const folderPath = path.dirname(packageCjson);
@@ -95,4 +95,4 @@ const updatePackageCjson = function (packageCjson) {
     }
 };
 
-module.exports = { updatePackageCjson };
+export { updatePackageCjson };

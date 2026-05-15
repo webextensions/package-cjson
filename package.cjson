@@ -38,6 +38,7 @@
     "main": "index.js",
     "name": "package-cjson",
     "preferGlobal": true,
+    "type": "module",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/webextensions/package-cjson.git"

@@ -54,5 +54,6 @@
         "update-and-generate-package-json": "node index.js --mode update-and-generate-package-json",
         "version": "./scripts/build-and-release/prepare-version.sh"
     },
+    "type": "module",
     "version": "1.6.0"
 }

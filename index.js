@@ -1,28 +1,29 @@
 #!/usr/bin/env node
 /*eslint-env node*/
 
-const
-    fs = require('node:fs'),
-    path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const
-    chalk = require('chalk'),
-    cjson = require('cjson'),
-    stringify = require('json-stable-stringify'),
-    detectIndent = require('detect-indent'),
-    jsonfile = require('jsonfile'),
-    deepEqual = require('deep-equal'),
-    difflet = require('difflet');
+import chalk from 'chalk';
+import cjson from 'cjson';
+import stringify from 'json-stable-stringify';
+import detectIndent from 'detect-indent';
+import jsonfile from 'jsonfile';
+import deepEqual from 'deep-equal';
+import difflet from 'difflet';
 
-const { updateFileIfRequired } = require('helpmate/dist/fs/updateFileIfRequired.cjs');
+import { updateFileIfRequired } from 'helpmate/dist/fs/updateFileIfRequired.js';
 
-const { logger } = require('note-down');
+import noteDown from 'note-down';
+const { logger } = noteDown;
 logger.removeOption('showLogLine');
 
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+const argv = yargs(hideBin(process.argv)).argv;
 
-const { argv } = require('yargs');
-
-const { updatePackageCjson } = require('./update-package-cjson/update-package-cjson.js');
+import { updatePackageCjson } from './update-package-cjson/update-package-cjson.js';
 
 const pwd = process.env.PWD;
 
@@ -64,8 +65,10 @@ const exitWithError = function (options) {
     process.exit(exitCode);
 };
 
+const isEntry = process.argv[1] === fileURLToPath(import.meta.url);
+
 const mode = argv['mode'];
-if (!module.parent) {   // This package is supposed to be used as a global package
+if (isEntry) {   // This package is supposed to be used as a global package
     if (
         [
             'compare',
@@ -85,7 +88,7 @@ if (!module.parent) {   // This package is supposed to be used as a global packa
         });
     }
 } else {
-    // Show a warning and exit with code 0 if this project is included with Node JS "require"
+    // Show a warning and exit with code 0 if this project is included with an "import" statement
     // (useful for basic test-case that this package would execute)
     exitWithError({
         summary: chalk.blue('Please run this module (package-cjson) from its executable file.') + chalk.yellow(' Warning: Exiting without error (code 0).'),
