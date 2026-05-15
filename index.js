@@ -70,6 +70,10 @@ const exitWithError = function (options) {
     process.exit(exitCode);
 };
 
+const writeOutputLine = function (message) {
+    fs.writeSync(1, `${message}\n`);
+};
+
 const isEntry = process.argv[1] === fileURLToPath(import.meta.url);
 
 const mode = argv['mode'];
@@ -102,26 +106,33 @@ if (isEntry) {   // This package is supposed to be used as a global package
 }
 
 const getPackageJsonSource = function (pwd) {
-    const packageJsonTsFilePath = path.resolve(pwd, './package.json.ts');
-    if (fs.existsSync(packageJsonTsFilePath)) {
-        return {
+    const packageJsonSources = [
+        {
             fileName: 'package.json.ts',
-            filePath: packageJsonTsFilePath,
-            type: 'typescript'
-        };
-    }
-
-    const packageCjsonFilePath = path.resolve(pwd, './package.cjson');
-    if (fs.existsSync(packageCjsonFilePath)) {
-        return {
+            type: 'module'
+        },
+        {
+            fileName: 'package.json.js',
+            type: 'module'
+        },
+        {
             fileName: 'package.cjson',
-            filePath: packageCjsonFilePath,
             type: 'cjson'
-        };
+        }
+    ];
+
+    for (const packageJsonSource of packageJsonSources) {
+        const packageJsonSourceFilePath = path.resolve(pwd, packageJsonSource.fileName);
+        if (fs.existsSync(packageJsonSourceFilePath)) {
+            return {
+                ...packageJsonSource,
+                filePath: packageJsonSourceFilePath
+            };
+        }
     }
 
     exitWithError({
-        summary: `\n ✘ Error: Could not find package.json.ts or package.cjson in ${pwd}. Exiting with code 1.\n`
+        summary: `\n ✘ Error: Could not find package.json.ts, package.json.js, or package.cjson in ${pwd}. Exiting with code 1.\n`
     });
 };
 
@@ -145,28 +156,28 @@ const normalizePackageJson = function (packageJsonSource, sourceFileName) {
     return JSON.parse(packageJson);
 };
 
-const loadPackageJsonTs = async function (packageJsonTsFilePath) {
-    let packageJsonTsModule;
+const loadPackageJsonModule = async function (source) {
+    let packageJsonModule;
     try {
-        packageJsonTsModule = await import(pathToFileURL(packageJsonTsFilePath).href);
+        packageJsonModule = await import(pathToFileURL(source.filePath).href);
     } catch (error) {
         exitWithError({
-            summary: `\n ✘ Error: Failed to load ${packageJsonTsFilePath}. Exiting with code 1.\n`,
+            summary: `\n ✘ Error: Failed to load ${source.filePath}. Exiting with code 1.\n`,
             error: error.message
         });
     }
 
-    if (!Object.hasOwn(packageJsonTsModule, 'default')) {
+    if (!Object.hasOwn(packageJsonModule, 'default')) {
         exitWithError({
-            summary: `\n ✘ Error: package.json.ts must have a default export. Exiting with code 1.\n`
+            summary: `\n ✘ Error: ${source.fileName} must have a default export. Exiting with code 1.\n`
         });
     }
 
     try {
-        return await Promise.resolve(packageJsonTsModule.default);
+        return await Promise.resolve(packageJsonModule.default);
     } catch (error) {
         exitWithError({
-            summary: `\n ✘ Error: Failed to resolve the default export from ${packageJsonTsFilePath}. Exiting with code 1.\n`,
+            summary: `\n ✘ Error: Failed to resolve the default export from ${source.filePath}. Exiting with code 1.\n`,
             error: error.message
         });
     }
@@ -177,8 +188,8 @@ const loadPackageSource = async function (pwd) {
     const rawContents = fs.readFileSync(source.filePath, 'utf8');
     let packageJsonSource;
 
-    if (source.type === 'typescript') {
-        packageJsonSource = await loadPackageJsonTs(source.filePath);
+    if (source.type === 'module') {
+        packageJsonSource = await loadPackageJsonModule(source);
     } else {
         try {
             packageJsonSource = cjson.load(source.filePath);
@@ -232,12 +243,12 @@ switch (mode) {
             if (argv['silent-on-compare-success']) {
                 // do nothing
             } else {
-                console.log(chalk.green(` ✔ ${chalk.bold('package.json')} is equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
+                writeOutputLine(chalk.green(` ✔ ${chalk.bold('package.json')} is equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
             }
         } else {
-            console.log(chalk.red(` ✘ ${chalk.bold('package.json')} is not equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
-            console.log(chalk.underline.bold('\nDiff:'));
-            console.log('    ' + difflet({ indent: 2 }).compare(packageSource.packageJson, packageJson).replace(/\n/g, '\n    '));
+            writeOutputLine(chalk.red(` ✘ ${chalk.bold('package.json')} is not equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
+            writeOutputLine(chalk.underline.bold('\nDiff:'));
+            writeOutputLine('    ' + difflet({ indent: 2 }).compare(packageSource.packageJson, packageJson).replace(/\n/g, '\n    '));
             process.exit(1);
         }
         break;
@@ -251,12 +262,12 @@ switch (mode) {
             if (argv['silent-on-compare-success']) {
                 // do nothing
             } else {
-                console.log(chalk.green(` ✔ ${chalk.bold('package-version.json')} is equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
+                writeOutputLine(chalk.green(` ✔ ${chalk.bold('package-version.json')} is equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
             }
         } else {
-            console.log(chalk.red(` ✘ ${chalk.bold('package-version.json')} is not equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
-            console.log(chalk.underline.bold('\nDiff:'));
-            console.log('    ' + difflet({ indent: 2 }).compare(packageSource.packageJson.version, packageVersionJson.version).replace(/\n/g, '\n    '));
+            writeOutputLine(chalk.red(` ✘ ${chalk.bold('package-version.json')} is not equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
+            writeOutputLine(chalk.underline.bold('\nDiff:'));
+            writeOutputLine('    ' + difflet({ indent: 2 }).compare(packageSource.packageJson.version, packageVersionJson.version).replace(/\n/g, '\n    '));
             process.exit(1);
         }
         break;
