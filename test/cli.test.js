@@ -19,6 +19,7 @@ const runCli = function (args, cwd) {
     return {
         stdout: result.stdout || '',
         stderr: result.stderr || '',
+        output: `${result.stdout || ''}${result.stderr || ''}`,
         exitCode: result.status
     };
 };
@@ -50,6 +51,25 @@ const expectedJsonContents = JSON.stringify({
     version: '1.0.0'
 }, null, 4) + '\n';
 
+const samplePackageJsonTsContents = [
+    'const dependencyName: string = \'chalk\';',
+    '',
+    'export default {',
+    '    name: \'ts-sample\',',
+    '    version: \'2.0.0\',',
+    '    dependencies: {',
+    '        [dependencyName]: \'^5.6.2\'',
+    '    }',
+    '};',
+    ''
+].join('\n');
+
+const expectedJsonFromTsContents = JSON.stringify({
+    dependencies: { chalk: '^5.6.2' },
+    name: 'ts-sample',
+    version: '2.0.0'
+}, null, 4) + '\n';
+
 describe('package-cjson CLI', function () {
     let tempDir;
     beforeEach(function () { tempDir = makeTempDir(); });
@@ -59,13 +79,13 @@ describe('package-cjson CLI', function () {
         it('exits with code 1 when no mode is provided', function () {
             const result = runCli([], tempDir);
             expect(result.exitCode).toBe(1);
-            expect(result.stdout).toContain('Not enough arguments');
+            expect(result.output).toContain('Not enough arguments');
         });
 
         it('exits with code 1 when an invalid mode is provided', function () {
             const result = runCli(['--mode', 'nonsense'], tempDir);
             expect(result.exitCode).toBe(1);
-            expect(result.stdout).toContain('Not enough arguments');
+            expect(result.output).toContain('Not enough arguments');
         });
     });
 
@@ -80,6 +100,21 @@ describe('package-cjson CLI', function () {
             const generatedJsonPath = path.join(tempDir, 'package.json');
             expect(fs.existsSync(generatedJsonPath)).toBe(true);
             expect(fs.readFileSync(generatedJsonPath, 'utf8')).toBe(expectedJsonContents);
+        });
+
+        it('creates package.json from package.json.ts when present', function () {
+            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), samplePackageJsonTsContents);
+            const result = runCli(['--mode', 'generate-package-json'], tempDir);
+            expect(result.exitCode).toBe(0);
+            expect(fs.readFileSync(path.join(tempDir, 'package.json'), 'utf8')).toBe(expectedJsonFromTsContents);
+        });
+
+        it('creates package.json from package.json.ts without package.cjson', function () {
+            fs.rmSync(path.join(tempDir, 'package.cjson'));
+            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), samplePackageJsonTsContents);
+            const result = runCli(['--mode', 'generate-package-json'], tempDir);
+            expect(result.exitCode).toBe(0);
+            expect(fs.readFileSync(path.join(tempDir, 'package.json'), 'utf8')).toBe(expectedJsonFromTsContents);
         });
 
         it('does not rewrite an already up-to-date package.json', function () {
@@ -109,6 +144,13 @@ describe('package-cjson CLI', function () {
             const generated = fs.readFileSync(path.join(tempDir, 'package.json'), 'utf8');
             expect(generated.endsWith('\n')).toBe(false);
         });
+
+        it('exits with code 1 when package.json.ts has no default export', function () {
+            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), 'export const name = \'sample\';\n');
+            const result = runCli(['--mode', 'generate-package-json'], tempDir);
+            expect(result.exitCode).toBe(1);
+            expect(result.output).toContain('must have a default export');
+        });
     });
 
     describe('--mode generate-package-version-json', function () {
@@ -125,6 +167,17 @@ describe('package-cjson CLI', function () {
             );
             expect(JSON.parse(generated)).toEqual({ version: '1.0.0' });
         });
+
+        it('creates package-version.json from package.json.ts when present', function () {
+            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), samplePackageJsonTsContents);
+            const result = runCli(['--mode', 'generate-package-version-json'], tempDir);
+            expect(result.exitCode).toBe(0);
+            const generated = fs.readFileSync(
+                path.join(tempDir, 'package-version.json'),
+                'utf8'
+            );
+            expect(JSON.parse(generated)).toEqual({ version: '2.0.0' });
+        });
     });
 
     describe('--mode compare', function () {
@@ -136,14 +189,22 @@ describe('package-cjson CLI', function () {
             fs.writeFileSync(path.join(tempDir, 'package.json'), expectedJsonContents);
             const result = runCli(['--mode', 'compare'], tempDir);
             expect(result.exitCode).toBe(0);
-            expect(result.stdout).toContain('is equivalent to');
+            expect(result.output).toContain('is equivalent to');
+        });
+
+        it('compares package.json with package.json.ts when present', function () {
+            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), samplePackageJsonTsContents);
+            fs.writeFileSync(path.join(tempDir, 'package.json'), expectedJsonFromTsContents);
+            const result = runCli(['--mode', 'compare'], tempDir);
+            expect(result.exitCode).toBe(0);
+            expect(result.output).toContain('package.json.ts');
         });
 
         it('prints nothing on success when --silent-on-compare-success is used', function () {
             fs.writeFileSync(path.join(tempDir, 'package.json'), expectedJsonContents);
             const result = runCli(['--mode', 'compare', '--silent-on-compare-success'], tempDir);
             expect(result.exitCode).toBe(0);
-            expect(result.stdout).toBe('');
+            expect(result.output).toBe('');
         });
 
         it('exits with code 1 and prints a diff when files differ', function () {
@@ -155,8 +216,8 @@ describe('package-cjson CLI', function () {
             fs.writeFileSync(path.join(tempDir, 'package.json'), differentJson);
             const result = runCli(['--mode', 'compare'], tempDir);
             expect(result.exitCode).toBe(1);
-            expect(result.stdout).toContain('is not equivalent to');
-            expect(result.stdout).toContain('Diff');
+            expect(result.output).toContain('is not equivalent to');
+            expect(result.output).toContain('Diff');
         });
     });
 
@@ -172,7 +233,7 @@ describe('package-cjson CLI', function () {
             );
             const result = runCli(['--mode', 'compare-package-version'], tempDir);
             expect(result.exitCode).toBe(0);
-            expect(result.stdout).toContain('is equivalent to');
+            expect(result.output).toContain('is equivalent to');
         });
 
         it('exits with code 1 when versions differ', function () {
@@ -182,7 +243,7 @@ describe('package-cjson CLI', function () {
             );
             const result = runCli(['--mode', 'compare-package-version'], tempDir);
             expect(result.exitCode).toBe(1);
-            expect(result.stdout).toContain('is not equivalent to');
+            expect(result.output).toContain('is not equivalent to');
         });
 
         it('prints nothing on success when --silent-on-compare-success is used', function () {
@@ -195,7 +256,7 @@ describe('package-cjson CLI', function () {
                 tempDir
             );
             expect(result.exitCode).toBe(0);
-            expect(result.stdout).toBe('');
+            expect(result.output).toBe('');
         });
     });
 });

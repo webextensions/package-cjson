@@ -1,4 +1,5 @@
 import { describe, it, vi } from 'vitest';
+import fs from 'node:fs';
 
 describe('package', function() {
     describe('package-json', function() {
@@ -10,6 +11,7 @@ describe('package', function() {
                 throw exitError;
             });
             const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+            const writeSyncSpy = vi.spyOn(fs, 'writeSync').mockImplementation(() => 0);
 
             try {
                 await import('../index.js');
@@ -20,6 +22,7 @@ describe('package', function() {
             } finally {
                 exitSpy.mockRestore();
                 consoleLogSpy.mockRestore();
+                writeSyncSpy.mockRestore();
             }
         });
     });

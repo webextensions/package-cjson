@@ -18,7 +18,7 @@
         "note-down": "^2.5.0",
         "yargs": "^18.0.0"
     },
-    "description": "Add comments in package.cjson in Node JS project; Generate package.json from it; Compare with package.json",
+    "description": "Add comments in package.cjson/package.json.ts in Node JS project; Generate package.json from it; Compare with package.json",
     "devDependencies": {
         "@eslint/js": "^10.0.1",
         "eslint": "^10.3.0",
@@ -32,6 +32,7 @@
     "keywords": [
         "comments",
         "package.cjson",
+        "package.json.ts",
         "generate",
         "package.json",
         "compare"

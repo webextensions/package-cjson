@@ -1,8 +1,15 @@
 #!/usr/bin/env node
 
+/*
+ * User-facing text uses console.log and note-down's logger (e.g. logger.verbose for help,
+ * logger.success after generate). stdout can be buffered asynchronously; exitWithError uses
+ * fs.writeSync(1, ...) for summary/error lines so they flush before process.exit(...). Elsewhere,
+ * use synchronous fd 1 writes or flush stdout if you need the same guarantee.
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import chalk from 'chalk';
 import cjson from 'cjson';
@@ -52,10 +59,10 @@ const exitWithError = function (options) {
         exitCode = typeof options.exitCode === 'number' ? options.exitCode : 1;
 
     if (summary) {
-        console.log(chalk.red(summary));
+        fs.writeSync(1, `${chalk.red(summary)}\n`);
     }
     if (error) {
-        console.log(chalk.red(error));
+        fs.writeSync(1, `${chalk.red(error)}\n`);
     }
     if (showHelp) {
         help();
@@ -94,18 +101,111 @@ if (isEntry) {   // This package is supposed to be used as a global package
     });
 }
 
-const doGeneratePackageJson = function (pwd) {
+const getPackageJsonSource = function (pwd) {
+    const packageJsonTsFilePath = path.resolve(pwd, './package.json.ts');
+    if (fs.existsSync(packageJsonTsFilePath)) {
+        return {
+            fileName: 'package.json.ts',
+            filePath: packageJsonTsFilePath,
+            type: 'typescript'
+        };
+    }
+
     const packageCjsonFilePath = path.resolve(pwd, './package.cjson');
-    const packageCjson = cjson.load(packageCjsonFilePath);
-    const packageJson = JSON.parse(stringify(packageCjson));
+    if (fs.existsSync(packageCjsonFilePath)) {
+        return {
+            fileName: 'package.cjson',
+            filePath: packageCjsonFilePath,
+            type: 'cjson'
+        };
+    }
+
+    exitWithError({
+        summary: `\n ✘ Error: Could not find package.json.ts or package.cjson in ${pwd}. Exiting with code 1.\n`
+    });
+};
+
+const normalizePackageJson = function (packageJsonSource, sourceFileName) {
+    let packageJson;
+    try {
+        packageJson = stringify(packageJsonSource);
+    } catch (error) {
+        exitWithError({
+            summary: `\n ✘ Error: Failed to convert ${sourceFileName} to package.json. Exiting with code 1.\n`,
+            error: error.message
+        });
+    }
+
+    if (typeof packageJson !== 'string') {
+        exitWithError({
+            summary: `\n ✘ Error: ${sourceFileName} must provide a JSON-serializable default export. Exiting with code 1.\n`
+        });
+    }
+
+    return JSON.parse(packageJson);
+};
+
+const loadPackageJsonTs = async function (packageJsonTsFilePath) {
+    let packageJsonTsModule;
+    try {
+        packageJsonTsModule = await import(pathToFileURL(packageJsonTsFilePath).href);
+    } catch (error) {
+        exitWithError({
+            summary: `\n ✘ Error: Failed to load ${packageJsonTsFilePath}. Exiting with code 1.\n`,
+            error: error.message
+        });
+    }
+
+    if (!Object.hasOwn(packageJsonTsModule, 'default')) {
+        exitWithError({
+            summary: `\n ✘ Error: package.json.ts must have a default export. Exiting with code 1.\n`
+        });
+    }
+
+    try {
+        return await Promise.resolve(packageJsonTsModule.default);
+    } catch (error) {
+        exitWithError({
+            summary: `\n ✘ Error: Failed to resolve the default export from ${packageJsonTsFilePath}. Exiting with code 1.\n`,
+            error: error.message
+        });
+    }
+};
+
+const loadPackageSource = async function (pwd) {
+    const source = getPackageJsonSource(pwd);
+    const rawContents = fs.readFileSync(source.filePath, 'utf8');
+    let packageJsonSource;
+
+    if (source.type === 'typescript') {
+        packageJsonSource = await loadPackageJsonTs(source.filePath);
+    } else {
+        try {
+            packageJsonSource = cjson.load(source.filePath);
+        } catch (error) {
+            exitWithError({
+                summary: `\n ✘ Error: Failed to load ${source.filePath}. Exiting with code 1.\n`,
+                error: error.message
+            });
+        }
+    }
+
+    return {
+        ...source,
+        packageJson: normalizePackageJson(packageJsonSource, source.fileName),
+        rawContents
+    };
+};
+
+const doGeneratePackageJson = async function (pwd) {
+    const packageSource = await loadPackageSource(pwd);
 
     const packageJsonFilePath = path.resolve(pwd, './package.json');
-    const packageCjsonRawContents = fs.readFileSync(packageCjsonFilePath, 'utf8');
-    const indentation = detectIndent(packageCjsonRawContents).indent || '  ';
-    const endsWithNewLine = (packageCjsonRawContents.substr(-1) === '\n') ? true : false;
+    const indentation = detectIndent(packageSource.rawContents).indent || '  ';
+    const endsWithNewLine = (packageSource.rawContents.substr(-1) === '\n') ? true : false;
     updateFileIfRequired({
         file: packageJsonFilePath,
-        data: JSON.stringify(packageJson, null, indentation) + (endsWithNewLine ? '\n' : ''),
+        data: JSON.stringify(packageSource.packageJson, null, indentation) + (endsWithNewLine ? '\n' : ''),
         callback: function (err) {
             if (err) {
                 exitWithError({
@@ -124,59 +224,55 @@ const doUpdatePackageCjson = function (pwd) {
 
 switch (mode) {
     case 'compare': {
-        const packageCjsonFilePath = path.resolve(pwd, './package.cjson');
-        const packageCjson = cjson.load(packageCjsonFilePath);
+        const packageSource = await loadPackageSource(pwd);
         const packageJsonFilePath = path.resolve(pwd, './package.json');
         const packageJson = jsonfile.readFileSync(packageJsonFilePath);
 
-        if (deepEqual(packageJson, packageCjson)) {
+        if (deepEqual(packageJson, packageSource.packageJson)) {
             if (argv['silent-on-compare-success']) {
                 // do nothing
             } else {
-                console.log(chalk.green(` ✔ ${chalk.bold('package.json')} is equivalent to ${chalk.bold('package.cjson')}`) + ` (${pwd})`);
+                console.log(chalk.green(` ✔ ${chalk.bold('package.json')} is equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
             }
         } else {
-            console.log(chalk.red(` ✘ ${chalk.bold('package.json')} is not equivalent to ${chalk.bold('package.cjson')}`) + ` (${pwd})`);
+            console.log(chalk.red(` ✘ ${chalk.bold('package.json')} is not equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
             console.log(chalk.underline.bold('\nDiff:'));
-            console.log('    ' + difflet({ indent: 2 }).compare(packageCjson, packageJson).replace(/\n/g, '\n    '));
+            console.log('    ' + difflet({ indent: 2 }).compare(packageSource.packageJson, packageJson).replace(/\n/g, '\n    '));
             process.exit(1);
         }
         break;
     }
     case 'compare-package-version': {
-        const packageCjsonFilePath = path.resolve(pwd, './package.cjson');
-        const packageCjson = cjson.load(packageCjsonFilePath);
+        const packageSource = await loadPackageSource(pwd);
         const packageVersionFilePath = path.resolve(pwd, './package-version.json');
         const packageVersionJson = jsonfile.readFileSync(packageVersionFilePath);
 
-        if (deepEqual(packageCjson.version, packageVersionJson.version)) {
+        if (deepEqual(packageSource.packageJson.version, packageVersionJson.version)) {
             if (argv['silent-on-compare-success']) {
                 // do nothing
             } else {
-                console.log(chalk.green(` ✔ ${chalk.bold('package-version.json')} is equivalent to ${chalk.bold('package.cjson')}`) + ` (${pwd})`);
+                console.log(chalk.green(` ✔ ${chalk.bold('package-version.json')} is equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
             }
         } else {
-            console.log(chalk.red(` ✘ ${chalk.bold('package-version.json')} is not equivalent to ${chalk.bold('pacakge.cjson')}`) + ` (${pwd})`);
+            console.log(chalk.red(` ✘ ${chalk.bold('package-version.json')} is not equivalent to ${chalk.bold(packageSource.fileName)}`) + ` (${pwd})`);
             console.log(chalk.underline.bold('\nDiff:'));
-            console.log('    ' + difflet({ indent: 2 }).compare(packageCjson.version, packageVersionJson.version).replace(/\n/g, '\n    '));
+            console.log('    ' + difflet({ indent: 2 }).compare(packageSource.packageJson.version, packageVersionJson.version).replace(/\n/g, '\n    '));
             process.exit(1);
         }
         break;
     }
     case 'generate-package-json': {
-        doGeneratePackageJson(pwd);
+        await doGeneratePackageJson(pwd);
         break;
     }
     case 'generate-package-version-json': {
-        const packageCjsonFilePath = path.resolve(pwd, './package.cjson');
-        const packageCjson = cjson.load(packageCjsonFilePath);
+        const packageSource = await loadPackageSource(pwd);
         const packageVersionJson = {
-            version: packageCjson.version
+            version: packageSource.packageJson.version
         };
         const packageVersionJsonFilePath = path.resolve(pwd, './package-version.json');
-        const packageCjsonRawContents = fs.readFileSync(packageCjsonFilePath, 'utf8');
-        const indentation = detectIndent(packageCjsonRawContents).indent || '  ';
-        const endsWithNewLine = (packageCjsonRawContents.substr(-1) === '\n') ? true : false;
+        const indentation = detectIndent(packageSource.rawContents).indent || '  ';
+        const endsWithNewLine = (packageSource.rawContents.substr(-1) === '\n') ? true : false;
         updateFileIfRequired({
             file: packageVersionJsonFilePath,
             data: JSON.stringify(packageVersionJson, null, indentation) + (endsWithNewLine ? '\n' : ''),
@@ -196,7 +292,7 @@ switch (mode) {
     }
     case 'update-and-generate-package-json':
         doUpdatePackageCjson(pwd);
-        doGeneratePackageJson(pwd);
+        await doGeneratePackageJson(pwd);
         break;
     default: {
         exitWithError({
