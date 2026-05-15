@@ -58,8 +58,6 @@ const updatePackageCjson = function (packageCjson) {
     let updatedPackageCjsonContents = originalPackageCjsonContents;
 
     for (const nameOfPackageToUpdate of packagesToUpdate) {
-        let latestSemverValue = commandOutput[nameOfPackageToUpdate];
-
         // LAZY: Handling only the common syntaxes. There can be other syntaxes which aren't handled.
         let charIndicatingVersionRange = commandOutput[nameOfPackageToUpdate].charAt(0);
         if (
@@ -72,7 +70,7 @@ const updatePackageCjson = function (packageCjson) {
         } else {
             charIndicatingVersionRange = '';
         }
-        latestSemverValue = commandOutput[nameOfPackageToUpdate]
+        const latestSemverValue = commandOutput[nameOfPackageToUpdate]
             .replace('^', '')
             .replace('~', '')
             .replace('=', '');
