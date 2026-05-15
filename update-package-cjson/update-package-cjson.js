@@ -4,8 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
 
-import noteDown from 'note-down';
-const { logger } = noteDown;
+import { logger } from 'note-down';
 
 const updatePackageCjson = function (packageCjson) {
     const folderPath = path.dirname(packageCjson);

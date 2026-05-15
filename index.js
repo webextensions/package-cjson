@@ -14,8 +14,7 @@ import difflet from 'difflet';
 
 import { updateFileIfRequired } from 'helpmate/dist/fs/updateFileIfRequired.js';
 
-import noteDown from 'note-down';
-const { logger } = noteDown;
+import { logger } from 'note-down';
 logger.removeOption('showLogLine');
 
 import yargs from 'yargs';
