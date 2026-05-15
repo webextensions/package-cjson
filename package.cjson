@@ -25,6 +25,7 @@
     "devDependencies": {
         "@eslint/js": "^10.0.1",           // ESLint recommended config (flat config)
         "eslint": "^10.3.0",
+        "execa": "^9.6.1",
         "globals": "^17.6.0",              // Predefined global identifiers (e.g. Node.js globals) for ESLint
         "vitest": "^4.1.6"
     },

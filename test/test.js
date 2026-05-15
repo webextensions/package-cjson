@@ -1,29 +1,27 @@
-import { describe, it, vi } from 'vitest';
-import fs from 'node:fs';
+import { describe, it, expect } from 'vitest';
+import { execa } from 'execa';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-describe('package', function() {
-    describe('package-json', function() {
-        // If there would be an error in import, the code would not reach this point
-        it('should load fine using import', async function() {
-            const exitError = new Error('process.exit');
-            exitError.code = 0;
-            const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
-                throw exitError;
-            });
-            const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-            const writeSyncSpy = vi.spyOn(fs, 'writeSync').mockImplementation(() => 0);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const packageRoot = path.resolve(__dirname, '..');
 
-            try {
-                await import('../index.js');
-            } catch (e) {
-                if (e !== exitError) {
-                    throw e;
+describe('package', function () {
+    describe('package-json', function () {
+        it('should load fine using import', async function () {
+            const result = await execa(
+                process.execPath,
+                ['--input-type=module', '--eval', "await import('./index.js');"],
+                {
+                    cwd: packageRoot,
+                    reject: false,
+                    all: true,
+                    stripFinalNewline: false
                 }
-            } finally {
-                exitSpy.mockRestore();
-                consoleLogSpy.mockRestore();
-                writeSyncSpy.mockRestore();
-            }
+            );
+
+            expect(result.exitCode).toBe(0);
+            expect(result.all).toContain('Please run this module');
         });
     });
 });

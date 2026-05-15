@@ -1,0 +1,7 @@
+{
+    "dependencies": {
+        "chalk": "^5.6.2"
+    },
+    "name": "ts-sample",
+    "version": "2.0.0"
+}

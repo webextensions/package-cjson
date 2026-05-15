@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { spawnSync } from 'node:child_process';
+import { execa } from 'execa';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,25 +7,39 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const cliPath = path.resolve(__dirname, '../index.js');
+const fixturesPath = path.join(__dirname, 'fixtures/cli');
 
-const runCli = function (args, cwd) {
-    const result = spawnSync(process.execPath, [cliPath, ...args], {
-        cwd,
-        // The CLI reads `process.env.PWD`, which Node does not refresh
-        // when the child process's `cwd` differs from the parent's.
-        env: { ...process.env, PWD: cwd },
-        encoding: 'utf8'
-    });
-    return {
-        stdout: result.stdout || '',
-        stderr: result.stderr || '',
-        output: `${result.stdout || ''}${result.stderr || ''}`,
-        exitCode: result.status
-    };
+const packageSources = {
+    cjson: {
+        fixture: 'package.cjson',
+        target: 'package.cjson',
+        expected: 'expected-from-cjson.json',
+        version: '1.0.0'
+    },
+    js: {
+        fixture: 'package-json-js.source',
+        target: 'package.json.js',
+        expected: 'expected-from-js.json',
+        version: '3.0.0'
+    },
+    ts: {
+        fixture: 'package-json-ts.source',
+        target: 'package.json.ts',
+        expected: 'expected-from-ts.json',
+        version: '2.0.0'
+    }
 };
 
+const sourceSelectionCases = [
+    ['package.cjson only', ['cjson'], 'cjson'],
+    ['package.json.ts only', ['ts'], 'ts'],
+    ['package.json.js only', ['js'], 'js'],
+    ['package.json.js over package.cjson', ['cjson', 'js'], 'js'],
+    ['package.json.ts over package.json.js', ['cjson', 'js', 'ts'], 'ts']
+];
+
 const makeTempDir = function () {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'package-cjson-test-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'package-cjson-cli-test-'));
 };
 
 const cleanupDir = function (dir) {
@@ -34,255 +48,178 @@ const cleanupDir = function (dir) {
     }
 };
 
-const sampleCjsonContents = [
-    '{',
-    '    "name": "sample",                // The name',
-    '    "version": "1.0.0",              // The version',
-    '    "dependencies": {',
-    '        "chalk": "^5.6.2"            // Colorful console',
-    '    }',
-    '}',
-    ''
-].join('\n');
+const fixturePath = function (name) {
+    return path.join(fixturesPath, name);
+};
 
-const expectedJsonContents = JSON.stringify({
-    dependencies: { chalk: '^5.6.2' },
-    name: 'sample',
-    version: '1.0.0'
-}, null, 4) + '\n';
-
-const samplePackageJsonTsContents = [
-    'const dependencyName: string = \'chalk\';',
-    '',
-    'export default {',
-    '    name: \'ts-sample\',',
-    '    version: \'2.0.0\',',
-    '    dependencies: {',
-    '        [dependencyName]: \'^5.6.2\'',
-    '    }',
-    '};',
-    ''
-].join('\n');
-
-const expectedJsonFromTsContents = JSON.stringify({
-    dependencies: { chalk: '^5.6.2' },
-    name: 'ts-sample',
-    version: '2.0.0'
-}, null, 4) + '\n';
-
-const samplePackageJsonJsContents = [
-    'const dependencyName = \'chalk\';',
-    '',
-    'export default {',
-    '    name: \'js-sample\',',
-    '    version: \'3.0.0\',',
-    '    dependencies: {',
-    '        [dependencyName]: \'^5.6.2\'',
-    '    }',
-    '};',
-    ''
-].join('\n');
-
-const expectedJsonFromJsContents = JSON.stringify({
-    dependencies: { chalk: '^5.6.2' },
-    name: 'js-sample',
-    version: '3.0.0'
-}, null, 4) + '\n';
+const readFixture = function (name) {
+    return fs.readFileSync(fixturePath(name), 'utf8');
+};
 
 describe('package-cjson CLI', function () {
     let tempDir;
-    beforeEach(function () { tempDir = makeTempDir(); });
-    afterEach(function () { cleanupDir(tempDir); });
 
-    describe('argument validation', function () {
-        it('exits with code 1 when no mode is provided', function () {
-            const result = runCli([], tempDir);
-            expect(result.exitCode).toBe(1);
-            expect(result.output).toContain('Not enough arguments');
+    const outputPath = function (fileName) {
+        return path.join(tempDir, fileName);
+    };
+
+    const copyFixture = function (fixtureName, targetName = fixtureName) {
+        fs.copyFileSync(fixturePath(fixtureName), outputPath(targetName));
+    };
+
+    const writeFixture = function (fixtureName, targetName = fixtureName, transform = (content) => content) {
+        fs.writeFileSync(outputPath(targetName), transform(readFixture(fixtureName)));
+    };
+
+    const writeSources = function (sourceNames) {
+        for (const sourceName of sourceNames) {
+            const source = packageSources[sourceName];
+            copyFixture(source.fixture, source.target);
+        }
+    };
+
+    const readOutput = function (fileName) {
+        return fs.readFileSync(outputPath(fileName), 'utf8');
+    };
+
+    const copyExpectedPackageJson = function (sourceName) {
+        copyFixture(packageSources[sourceName].expected, 'package.json');
+    };
+
+    const runCli = async function (args) {
+        const result = await execa(process.execPath, [cliPath, ...args], {
+            cwd: tempDir,
+            env: { ...process.env, PWD: tempDir },
+            reject: false,
+            all: true,
+            stripFinalNewline: false
         });
 
-        it('exits with code 1 when an invalid mode is provided', function () {
-            const result = runCli(['--mode', 'nonsense'], tempDir);
+        return {
+            ...result,
+            output: result.all ?? `${result.stdout}${result.stderr}`
+        };
+    };
+
+    beforeEach(function () {
+        cleanupDir(tempDir);
+        tempDir = makeTempDir();
+    });
+
+    afterEach(function () {
+        cleanupDir(tempDir);
+    });
+
+    describe('argument validation', function () {
+        it.each([
+            ['no mode is provided', []],
+            ['an invalid mode is provided', ['--mode', 'nonsense']]
+        ])('exits with code 1 when %s', async function (_description, args) {
+            const result = await runCli(args);
+
             expect(result.exitCode).toBe(1);
             expect(result.output).toContain('Not enough arguments');
         });
     });
 
     describe('--mode generate-package-json', function () {
-        beforeEach(function () {
-            fs.writeFileSync(path.join(tempDir, 'package.cjson'), sampleCjsonContents);
-        });
+        it.each(sourceSelectionCases)('creates package.json from %s', async function (_description, sourceNames, expectedSourceName) {
+            writeSources(sourceNames);
 
-        it('creates package.json from package.cjson', function () {
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
+            const result = await runCli(['--mode', 'generate-package-json']);
+
             expect(result.exitCode).toBe(0);
-            const generatedJsonPath = path.join(tempDir, 'package.json');
-            expect(fs.existsSync(generatedJsonPath)).toBe(true);
-            expect(fs.readFileSync(generatedJsonPath, 'utf8')).toBe(expectedJsonContents);
+            expect(readOutput('package.json')).toBe(readFixture(packageSources[expectedSourceName].expected));
         });
 
-        it('creates package.json from package.json.ts when present', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), samplePackageJsonTsContents);
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
+        it('does not rewrite an already up-to-date package.json', async function () {
+            writeSources(['cjson']);
+            copyExpectedPackageJson('cjson');
+
+            const beforeMtime = fs.statSync(outputPath('package.json')).mtimeMs;
+            const result = await runCli(['--mode', 'generate-package-json']);
+
             expect(result.exitCode).toBe(0);
-            expect(fs.readFileSync(path.join(tempDir, 'package.json'), 'utf8')).toBe(expectedJsonFromTsContents);
+            expect(fs.statSync(outputPath('package.json')).mtimeMs).toBe(beforeMtime);
         });
 
-        it('creates package.json from package.json.js when present', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json.js'), samplePackageJsonJsContents);
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
+        it('preserves a trailing newline if the source file has one', async function () {
+            writeSources(['cjson']);
+
+            const result = await runCli(['--mode', 'generate-package-json']);
+
             expect(result.exitCode).toBe(0);
-            expect(fs.readFileSync(path.join(tempDir, 'package.json'), 'utf8')).toBe(expectedJsonFromJsContents);
+            expect(readOutput('package.json').endsWith('\n')).toBe(true);
         });
 
-        it('creates package.json from package.json.ts without package.cjson', function () {
-            fs.rmSync(path.join(tempDir, 'package.cjson'));
-            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), samplePackageJsonTsContents);
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
+        it('omits a trailing newline if the source file has none', async function () {
+            writeFixture('package.cjson', 'package.cjson', (content) => content.replace(/\n$/, ''));
+
+            const result = await runCli(['--mode', 'generate-package-json']);
+
             expect(result.exitCode).toBe(0);
-            expect(fs.readFileSync(path.join(tempDir, 'package.json'), 'utf8')).toBe(expectedJsonFromTsContents);
+            expect(readOutput('package.json').endsWith('\n')).toBe(false);
         });
 
-        it('creates package.json from package.json.js without package.cjson', function () {
-            fs.rmSync(path.join(tempDir, 'package.cjson'));
-            fs.writeFileSync(path.join(tempDir, 'package.json.js'), samplePackageJsonJsContents);
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
-            expect(result.exitCode).toBe(0);
-            expect(fs.readFileSync(path.join(tempDir, 'package.json'), 'utf8')).toBe(expectedJsonFromJsContents);
-        });
+        it.each([
+            ['package.json.ts', 'package-json-ts-without-default.source'],
+            ['package.json.js', 'package-json-js-without-default.source']
+        ])('exits with code 1 when %s has no default export', async function (sourceFileName, fixtureName) {
+            writeSources(['cjson']);
+            copyFixture(fixtureName, sourceFileName);
 
-        it('prefers package.json.ts over package.json.js', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), samplePackageJsonTsContents);
-            fs.writeFileSync(path.join(tempDir, 'package.json.js'), samplePackageJsonJsContents);
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
-            expect(result.exitCode).toBe(0);
-            expect(fs.readFileSync(path.join(tempDir, 'package.json'), 'utf8')).toBe(expectedJsonFromTsContents);
-        });
+            const result = await runCli(['--mode', 'generate-package-json']);
 
-        it('does not rewrite an already up-to-date package.json', function () {
-            const packageJsonPath = path.join(tempDir, 'package.json');
-            fs.writeFileSync(packageJsonPath, expectedJsonContents);
-            const beforeMtime = fs.statSync(packageJsonPath).mtimeMs;
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
-            expect(result.exitCode).toBe(0);
-            const afterMtime = fs.statSync(packageJsonPath).mtimeMs;
-            expect(afterMtime).toBe(beforeMtime);
-        });
-
-        it('preserves a trailing newline if package.cjson has one', function () {
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
-            expect(result.exitCode).toBe(0);
-            const generated = fs.readFileSync(path.join(tempDir, 'package.json'), 'utf8');
-            expect(generated.endsWith('\n')).toBe(true);
-        });
-
-        it('omits a trailing newline if package.cjson has none', function () {
-            fs.writeFileSync(
-                path.join(tempDir, 'package.cjson'),
-                sampleCjsonContents.replace(/\n$/, '')
-            );
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
-            expect(result.exitCode).toBe(0);
-            const generated = fs.readFileSync(path.join(tempDir, 'package.json'), 'utf8');
-            expect(generated.endsWith('\n')).toBe(false);
-        });
-
-        it('exits with code 1 when package.json.ts has no default export', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), 'export const name = \'sample\';\n');
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
             expect(result.exitCode).toBe(1);
-            expect(result.output).toContain('must have a default export');
-        });
-
-        it('exits with code 1 when package.json.js has no default export', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json.js'), 'export const name = \'sample\';\n');
-            const result = runCli(['--mode', 'generate-package-json'], tempDir);
-            expect(result.exitCode).toBe(1);
-            expect(result.output).toContain('package.json.js must have a default export');
+            expect(result.output).toContain(`${sourceFileName} must have a default export`);
         });
     });
 
     describe('--mode generate-package-version-json', function () {
-        beforeEach(function () {
-            fs.writeFileSync(path.join(tempDir, 'package.cjson'), sampleCjsonContents);
-        });
+        it.each(sourceSelectionCases)('creates package-version.json from %s', async function (_description, sourceNames, expectedSourceName) {
+            writeSources(sourceNames);
 
-        it('creates package-version.json with only the version', function () {
-            const result = runCli(['--mode', 'generate-package-version-json'], tempDir);
-            expect(result.exitCode).toBe(0);
-            const generated = fs.readFileSync(
-                path.join(tempDir, 'package-version.json'),
-                'utf8'
-            );
-            expect(JSON.parse(generated)).toEqual({ version: '1.0.0' });
-        });
+            const result = await runCli(['--mode', 'generate-package-version-json']);
 
-        it('creates package-version.json from package.json.ts when present', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), samplePackageJsonTsContents);
-            const result = runCli(['--mode', 'generate-package-version-json'], tempDir);
             expect(result.exitCode).toBe(0);
-            const generated = fs.readFileSync(
-                path.join(tempDir, 'package-version.json'),
-                'utf8'
-            );
-            expect(JSON.parse(generated)).toEqual({ version: '2.0.0' });
-        });
-
-        it('creates package-version.json from package.json.js when present', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json.js'), samplePackageJsonJsContents);
-            const result = runCli(['--mode', 'generate-package-version-json'], tempDir);
-            expect(result.exitCode).toBe(0);
-            const generated = fs.readFileSync(
-                path.join(tempDir, 'package-version.json'),
-                'utf8'
-            );
-            expect(JSON.parse(generated)).toEqual({ version: '3.0.0' });
+            expect(JSON.parse(readOutput('package-version.json'))).toEqual({
+                version: packageSources[expectedSourceName].version
+            });
         });
     });
 
     describe('--mode compare', function () {
-        beforeEach(function () {
-            fs.writeFileSync(path.join(tempDir, 'package.cjson'), sampleCjsonContents);
-        });
+        it.each([
+            ['package.cjson', ['cjson'], 'cjson'],
+            ['package.json.ts', ['cjson', 'ts'], 'ts'],
+            ['package.json.js', ['cjson', 'js'], 'js']
+        ])('exits with code 0 when package.json matches %s', async function (sourceLabel, sourceNames, expectedSourceName) {
+            writeSources(sourceNames);
+            copyExpectedPackageJson(expectedSourceName);
 
-        it('exits with code 0 and reports equivalence when files match', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json'), expectedJsonContents);
-            const result = runCli(['--mode', 'compare'], tempDir);
+            const result = await runCli(['--mode', 'compare']);
+
             expect(result.exitCode).toBe(0);
             expect(result.output).toContain('is equivalent to');
+            expect(result.output).toContain(sourceLabel);
         });
 
-        it('compares package.json with package.json.ts when present', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json.ts'), samplePackageJsonTsContents);
-            fs.writeFileSync(path.join(tempDir, 'package.json'), expectedJsonFromTsContents);
-            const result = runCli(['--mode', 'compare'], tempDir);
-            expect(result.exitCode).toBe(0);
-            expect(result.output).toContain('package.json.ts');
-        });
+        it('prints nothing on success when --silent-on-compare-success is used', async function () {
+            writeSources(['cjson']);
+            copyExpectedPackageJson('cjson');
 
-        it('compares package.json with package.json.js when present', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json.js'), samplePackageJsonJsContents);
-            fs.writeFileSync(path.join(tempDir, 'package.json'), expectedJsonFromJsContents);
-            const result = runCli(['--mode', 'compare'], tempDir);
-            expect(result.exitCode).toBe(0);
-            expect(result.output).toContain('package.json.js');
-        });
+            const result = await runCli(['--mode', 'compare', '--silent-on-compare-success']);
 
-        it('prints nothing on success when --silent-on-compare-success is used', function () {
-            fs.writeFileSync(path.join(tempDir, 'package.json'), expectedJsonContents);
-            const result = runCli(['--mode', 'compare', '--silent-on-compare-success'], tempDir);
             expect(result.exitCode).toBe(0);
             expect(result.output).toBe('');
         });
 
-        it('exits with code 1 and prints a diff when files differ', function () {
-            const differentJson = JSON.stringify({
-                dependencies: { chalk: '^5.6.2' },
-                name: 'sample',
-                version: '2.0.0'
-            }, null, 4) + '\n';
-            fs.writeFileSync(path.join(tempDir, 'package.json'), differentJson);
-            const result = runCli(['--mode', 'compare'], tempDir);
+        it('exits with code 1 and prints a diff when files differ', async function () {
+            writeSources(['cjson']);
+            copyFixture('different-package.json', 'package.json');
+
+            const result = await runCli(['--mode', 'compare']);
+
             expect(result.exitCode).toBe(1);
             expect(result.output).toContain('is not equivalent to');
             expect(result.output).toContain('Diff');
@@ -290,39 +227,41 @@ describe('package-cjson CLI', function () {
     });
 
     describe('--mode compare-package-version', function () {
+        const writePackageVersion = function (version) {
+            fs.writeFileSync(outputPath('package-version.json'), `${JSON.stringify({ version })}\n`);
+        };
+
         beforeEach(function () {
-            fs.writeFileSync(path.join(tempDir, 'package.cjson'), sampleCjsonContents);
+            writeSources(['cjson']);
         });
 
-        it('exits with code 0 when versions match', function () {
-            fs.writeFileSync(
-                path.join(tempDir, 'package-version.json'),
-                JSON.stringify({ version: '1.0.0' }) + '\n'
-            );
-            const result = runCli(['--mode', 'compare-package-version'], tempDir);
+        it('exits with code 0 when versions match', async function () {
+            writePackageVersion('1.0.0');
+
+            const result = await runCli(['--mode', 'compare-package-version']);
+
             expect(result.exitCode).toBe(0);
             expect(result.output).toContain('is equivalent to');
         });
 
-        it('exits with code 1 when versions differ', function () {
-            fs.writeFileSync(
-                path.join(tempDir, 'package-version.json'),
-                JSON.stringify({ version: '9.9.9' }) + '\n'
-            );
-            const result = runCli(['--mode', 'compare-package-version'], tempDir);
+        it('exits with code 1 when versions differ', async function () {
+            writePackageVersion('9.9.9');
+
+            const result = await runCli(['--mode', 'compare-package-version']);
+
             expect(result.exitCode).toBe(1);
             expect(result.output).toContain('is not equivalent to');
         });
 
-        it('prints nothing on success when --silent-on-compare-success is used', function () {
-            fs.writeFileSync(
-                path.join(tempDir, 'package-version.json'),
-                JSON.stringify({ version: '1.0.0' }) + '\n'
-            );
-            const result = runCli(
-                ['--mode', 'compare-package-version', '--silent-on-compare-success'],
-                tempDir
-            );
+        it('prints nothing on success when --silent-on-compare-success is used', async function () {
+            writePackageVersion('1.0.0');
+
+            const result = await runCli([
+                '--mode',
+                'compare-package-version',
+                '--silent-on-compare-success'
+            ]);
+
             expect(result.exitCode).toBe(0);
             expect(result.output).toBe('');
         });

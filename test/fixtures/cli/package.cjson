@@ -1,0 +1,7 @@
+{
+    "name": "sample",                // The name
+    "version": "1.0.0",              // The version
+    "dependencies": {
+        "chalk": "^5.6.2"            // Colorful console
+    }
+}
