@@ -21,7 +21,7 @@
     "description": "Add comments in package.cjson in Node JS project; Generate package.json from it; Compare with package.json",
     "devDependencies": {
         "eslint": "=8.57.0",
-        "mocha": "^10.8.2"
+        "vitest": "^4.1.6"
     },
     "engines": {
         "node": ">=22.12.0"
@@ -47,12 +47,12 @@
         "compare-silent": "node index.js --mode compare --silent-on-compare-success",
         "generate-package-json": "node index.js --mode generate-package-json",
         "lint": "./node_modules/.bin/eslint .",
-        "mocha": "./node_modules/.bin/mocha",
         "start": "node index.js",
-        "test": "npm run lint && npm run mocha",
+        "test": "npm run lint && npm run vitest",
         "update": "node index.js --mode update",
         "update-and-generate-package-json": "node index.js --mode update-and-generate-package-json",
-        "version": "./scripts/build-and-release/prepare-version.sh"
+        "version": "./scripts/build-and-release/prepare-version.sh",
+        "vitest": "vitest run"
     },
     "type": "module",
     "version": "1.6.0"
