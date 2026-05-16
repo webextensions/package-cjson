@@ -9,7 +9,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 import chalk from 'chalk';
 import cjson from 'cjson';
@@ -74,7 +74,11 @@ const writeOutputLine = function (message) {
     fs.writeSync(1, `${message}\n`);
 };
 
-const isEntry = process.argv[1] === fileURLToPath(import.meta.url);
+// Uses `import.meta.main` (stable in Node.js >= 24.2.0) to detect direct CLI invocation.
+// The previous `process.argv[1] === fileURLToPath(import.meta.url)` check was unreliable
+// when the script was launched through a symlink (e.g. via `node_modules/.bin/package-cjson`),
+// because Node resolves symlinks for `import.meta.url` but not for `process.argv[1]`.
+const isEntry = import.meta.main;
 
 const mode = argv['mode'];
 if (isEntry) {   // This package is supposed to be used as a global package

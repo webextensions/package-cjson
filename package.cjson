@@ -1,7 +1,8 @@
 {
     "author": "Priyank Parashar",
     "engines": {
-        "node": ">=22.12.0"
+        // `>=24.2.0` is required because `index.js` uses `import.meta.main`, which became stable in Node.js 24.2.0.
+        "node": ">=24.2.0"
     },
     "bin": {
         "package-cjson": "./index.js"

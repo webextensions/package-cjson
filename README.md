@@ -38,7 +38,7 @@ export default {
 
 The exported value must be JSON-serializable. Output is written with stable key ordering, using the indentation and trailing newline style from the source file.
 
-`package.json.ts` is loaded with Node's native TypeScript support, so it requires Node.js `>=22.12.0`. `package.json.js` is loaded with Node's native JavaScript module support.
+`package-cjson` requires Node.js `>=24.2.0` (for `import.meta.main`, used to detect direct CLI invocation). `package.json.ts` is loaded with Node's native TypeScript support (available since `22.12.0`); `package.json.js` is loaded with Node's native JavaScript module support.
 
 ## Usage
 
