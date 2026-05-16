@@ -226,6 +226,15 @@ describe('package-cjson CLI', function () {
         });
     });
 
+    describe('--mode update', function () {
+        it('exits with code 1 when no package source file is present', async function () {
+            const result = await runCli(['--mode', 'update']);
+
+            expect(result.exitCode).toBe(1);
+            expect(result.output).toContain('Could not find package.json.ts, package.json.js, or package.cjson');
+        });
+    });
+
     describe('--mode compare-package-version', function () {
         const writePackageVersion = function (version) {
             fs.writeFileSync(outputPath('package-version.json'), `${JSON.stringify({ version })}\n`);

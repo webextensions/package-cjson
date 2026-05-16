@@ -230,7 +230,8 @@ const doGeneratePackageJson = async function (pwd) {
 };
 
 const doUpdatePackageCjson = function (pwd) {
-    updatePackageCjson(path.resolve(pwd, './package.cjson'));
+    const source = getPackageJsonSource(pwd);
+    updatePackageCjson(source.filePath);
 };
 
 switch (mode) {

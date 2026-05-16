@@ -6,12 +6,15 @@ import { execSync } from 'node:child_process';
 
 import { logger } from 'note-down';
 
-const updatePackageCjson = function (packageCjson) {
-    const folderPath = path.dirname(packageCjson);
+const escapeRegex = function (value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
 
-    const packageCjsonFilePath = path.join(folderPath, 'package.cjson');
-    const packageCjsonFilePathRelativeToCwd = path.relative(process.cwd(), packageCjsonFilePath);
-    logger.info(`\n > Checking ${packageCjsonFilePathRelativeToCwd} for updates`);
+const updatePackageCjson = function (packageSourceFilePath) {
+    const folderPath = path.dirname(packageSourceFilePath);
+
+    const packageSourceFilePathRelativeToCwd = path.relative(process.cwd(), packageSourceFilePath);
+    logger.info(`\n > Checking ${packageSourceFilePathRelativeToCwd} for updates`);
 
     let commandOutput;
 
@@ -52,9 +55,9 @@ const updatePackageCjson = function (packageCjson) {
         logger.info(` + Update is available: ${nameOfPackageToUpdate}@${commandOutput[nameOfPackageToUpdate]}`);
     }
 
-    const originalPackageCjsonContents = fs.readFileSync(packageCjsonFilePath, 'utf8');
+    const originalPackageSourceContents = fs.readFileSync(packageSourceFilePath, 'utf8');
 
-    let updatedPackageCjsonContents = originalPackageCjsonContents;
+    let updatedPackageSourceContents = originalPackageSourceContents;
 
     for (const nameOfPackageToUpdate of packagesToUpdate) {
         // LAZY: Handling only the common syntaxes. There can be other syntaxes which aren't handled.
@@ -74,19 +77,27 @@ const updatePackageCjson = function (packageCjson) {
             .replace('~', '')
             .replace('=', '');
 
-        updatedPackageCjsonContents = updatedPackageCjsonContents.replace(
-            // // LAZY: Handling only the common syntaxes. There can be other syntaxes which aren't handled.
-            new RegExp(`"${nameOfPackageToUpdate}"[\\s]*:[\\s]*"[0-9.^~=]+(-[a-zA-Z0-9.]+)?"`),
+        // LAZY: Handling only the common syntaxes. There can be other syntaxes which aren't handled
+        // (e.g. computed keys like `[dependencyName]: '...'` in package.json.js / package.json.ts).
+        // For package.json.js / package.json.ts, both single-quote and double-quote string literals
+        // are recognized, and bare identifier keys are recognized for simple package names.
+        const escapedName = escapeRegex(nameOfPackageToUpdate);
+        const keyPattern = `(?:"${escapedName}"|'${escapedName}'|(?<!\\w)${escapedName}(?!\\w))`;
+        const valuePattern = `(["'])[0-9.^~=]+(?:-[a-zA-Z0-9.]+)?\\2`;
+        const regex = new RegExp(`(${keyPattern}[\\s]*:[\\s]*)${valuePattern}`);
+
+        updatedPackageSourceContents = updatedPackageSourceContents.replace(
+            regex,
             // LAZY: Replacing logic is a bit plain and there might be more cases to cover if we wish to go for a thorough solution
-            `"${nameOfPackageToUpdate}": "${charIndicatingVersionRange}${latestSemverValue}"`
+            (_match, prefix, quoteChar) => `${prefix}${quoteChar}${charIndicatingVersionRange}${latestSemverValue}${quoteChar}`
         );
     }
 
-    if (originalPackageCjsonContents === updatedPackageCjsonContents) {
-        logger.success(` ✔ ${packageCjsonFilePathRelativeToCwd} seems up-to-date.`);
+    if (originalPackageSourceContents === updatedPackageSourceContents) {
+        logger.success(` ✔ ${packageSourceFilePathRelativeToCwd} seems up-to-date.`);
     } else {
-        fs.writeFileSync(packageCjsonFilePath, updatedPackageCjsonContents);
-        logger.warn(` ✔ Updated: ${packageCjsonFilePathRelativeToCwd}`);
+        fs.writeFileSync(packageSourceFilePath, updatedPackageSourceContents);
+        logger.warn(` ✔ Updated: ${packageSourceFilePathRelativeToCwd}`);
         logger.info(`   You may want to run:`);
         logger.info(`       $ npm install`);
     }

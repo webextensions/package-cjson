@@ -49,4 +49,6 @@ package-cjson --mode generate-package-version-json
 package-cjson --mode compare-package-version
 ```
 
-The `update` mode updates `package.cjson` dependencies. The `update-and-generate-package-json` mode still performs that `package.cjson` update first, then generates `package.json` from the selected source.
+The `update` mode updates dependency versions in the selected source file (`package.json.ts`, `package.json.js`, or `package.cjson`, in that priority order). The `update-and-generate-package-json` mode performs that update first, then generates `package.json` from the same source.
+
+> **Note:** Dependencies declared with computed keys in `package.json.js`/`package.json.ts` (e.g. `[dependencyName]: '^1.0.0'`) are skipped by `--mode update`, since the package name does not appear literally in the source file.
