@@ -21,7 +21,7 @@
     "description": "Add comments in package.cjson/package.json.js/package.json.ts in Node JS project; Generate package.json from it; Compare with package.json",
     "devDependencies": {
         "@eslint/js": "^10.0.1",
-        "eslint": "^10.3.0",
+        "eslint": "^10.4.0",
         "execa": "^9.6.1",
         "globals": "^17.6.0",
         "vitest": "^4.1.6"
@@ -50,10 +50,10 @@
     "scripts": {
         "compare": "node index.js --mode compare",
         "compare-silent": "node index.js --mode compare --silent-on-compare-success",
+        "eslint": "eslint .",
         "generate-package-json": "node index.js --mode generate-package-json",
-        "lint": "eslint .",
         "start": "node index.js",
-        "test": "npm run lint && npm run vitest",
+        "test": "npm run eslint && npm run vitest",
         "update": "node index.js --mode update",
         "update-and-generate-package-json": "node index.js --mode update-and-generate-package-json",
         "version": "./scripts/build-and-release/prepare-version.sh",
