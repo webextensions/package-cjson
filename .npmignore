@@ -1,0 +1,4 @@
+# Because it is relatively large in size
+.claude/
+.codex/
+.cursor/
