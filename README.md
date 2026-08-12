@@ -51,4 +51,20 @@ package-cjson --mode compare-package-version
 
 The `update` mode updates dependency versions in the selected source file (`package.json.ts`, `package.json.js`, or `package.cjson`, in that priority order). The `update-and-generate-package-json` mode performs that update first, then generates `package.json` from the same source.
 
+> **Note:** The update modes require [`npm-check-updates`](https://www.npmjs.com/package/npm-check-updates) to be available on `PATH` (`npm install -g npm-check-updates`), and they read the currently declared version ranges from the generated `package.json`, so it needs to exist alongside the source file.
+
+### Version-range policy
+
+The version-range prefix declared for a dependency states the update intent, and the update modes honor it:
+
+| Declared      | Behavior                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| `^1.2.3`      | Updated to the latest available version, major bumps included                               |
+| `1.2.3`       | Updated to the latest available version, major bumps included, and kept without a prefix    |
+| `~1.2.3`      | Updated to the latest version within the same major; a newer major is reported, not applied |
+| `=1.2.3`      | Never updated; reported so that it can be handled manually                                  |
+| Anything else | Never updated; reported as an unsupported version range                                     |
+
+"Anything else" covers every other syntax, such as `>=1.0.0`, `1.x`, `*`, `a || b`, `latest`, git URLs, `workspace:`, `file:` and npm aliases.
+
 > **Note:** Dependencies declared with computed keys in `package.json.js`/`package.json.ts` (e.g. `[dependencyName]: '^1.0.0'`) are skipped by `--mode update`, since the package name does not appear literally in the source file.
