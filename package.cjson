@@ -63,5 +63,5 @@
         "update": "node index.js --mode update",
         "update-and-generate-package-json": "node index.js --mode update-and-generate-package-json"
     },
-    "version": "3.0.0"
+    "version": "3.1.0"
 }
